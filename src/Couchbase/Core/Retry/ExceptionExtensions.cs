@@ -29,6 +29,8 @@ namespace Couchbase.Core.Retry
                 case CircuitBreakerException _: return RetryReason.CircuitBreakerOpen;
                 case CollectionNotFoundException _: return RetryReason.CollectionNotFound;
                 case ScopeNotFoundException _: return RetryReason.ScopeNotFound;
+                case SocketNotAvailableException _: return RetryReason.SocketNotAvailable;
+                //case ServiceResponseRetryException _: return RetryReason.ServiceResponseCodeIndicated;
                 default:
                 {
                     return RetryReason.NoRetry;
