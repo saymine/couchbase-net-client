@@ -764,6 +764,76 @@ namespace Couchbase.Core
 
             RemoveAllNodes();
         }
+        
+        #region mine code
+        
+        public async Task<IClusterNode> ReCreateNode(BucketBase bucket, IClusterNode oldNode)
+        {
+            _logger.LogWarning("ReCreateNode starting for node: {endPoint} for bucket {name}.", _redactor.SystemData(oldNode.EndPoint), bucket);
+
+            RemoveNode(oldNode);
+
+            var newNode = await RebootStrapToSingleEndpointAsync(bucket, oldNode.EndPoint)
+                .ConfigureAwait(false);
+            
+            _logger.LogWarning("ReCreateNode ended for node: {endPoint} for bucket {name}.", _redactor.SystemData(newNode.EndPoint), bucket);
+
+            return newNode;
+        }
+        
+        private async Task<IClusterNode> RebootStrapToSingleEndpointAsync(BucketBase bucket, HostEndpointWithPort endpoint)
+        {
+            _logger.LogInformation($"Bootstrapping: a rebootstrap action is starting on host {endpoint}.");
+
+            var node = GetUnassignedNode(endpoint);
+            if (node == null)
+            {
+                node = await _clusterNodeFactory.CreateAndConnectAsync(endpoint, CancellationToken)
+                    .ConfigureAwait(false);
+                AddNode(node);
+            }
+
+            try
+            {
+                //The bucket must be selected so that a bucket specific config is returned
+                await node.SelectBucketAsync(bucket.Name).ConfigureAwait(false);
+
+                BucketConfig config;
+                try
+                {
+                    _logger.LogInformation("Bootstrapping: fetching the config using CCCP for bucket {name}.",
+                        _redactor.MetaData(bucket.Name));
+
+                    //First try CCCP to fetch the config
+                    config = await node.GetClusterMap().ConfigureAwait(false);
+                }
+                catch (DocumentNotFoundException)
+                {
+                    _logger.LogInformation("Bootstrapping: switching to HTTP Streaming for bucket {name}.",
+                        _redactor.MetaData(bucket.Name));
+
+                    //In this case CCCP has failed for whatever reason
+                    //We need to now try HTTP Streaming for config fetching
+                    config = await _httpClusterMap.GetClusterMapAsync(
+                        bucket.Name, node.EndPoint, CancellationToken.None).ConfigureAwait(false);
+                }
+
+                //make sure the bucket has the latest config as the current config
+                config.IgnoreRev = true;
+                await bucket.ConfigUpdatedAsync(config).ConfigureAwait(false);
+
+                return node;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Could not bootstrap bucket {name}. to endpoint: {endpoint}", _redactor.MetaData(bucket.Name), endpoint);
+            }
+
+            return null;
+        }
+
+        
+        #endregion
     }
 }
 

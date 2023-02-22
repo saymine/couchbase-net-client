@@ -210,7 +210,7 @@ namespace Couchbase
                 {
                     if (Nodes.TryGet(endPoint.GetValueOrDefault(), out var clusterNode))
                     {
-                        return await clusterNode.SendAsync(op, tokenPair).ConfigureAwait(false);
+                        return await SendOperationToClusterNode(clusterNode, op, tokenPair).ConfigureAwait(false);
                     }
                 }
                 catch (ArgumentNullException)
@@ -227,7 +227,7 @@ namespace Couchbase
             if (node == null)
                 throw new NodeNotAvailableException(
                     $"Cannot find a Couchbase Server node for executing {op.GetType()}.");
-            return await node.SendAsync(op, tokenPair).ConfigureAwait(false);
+            return await SendOperationToClusterNode(node, op, tokenPair).ConfigureAwait(false);
         }
 
         internal override async Task BootstrapAsync(IClusterNode node)
@@ -300,6 +300,55 @@ namespace Couchbase
         {
             ((IBootstrappable)this).DeferredExceptions.Clear();
         }
+        
+        #region mine code
+        
+        private async Task<ResponseStatus> SendOperationToClusterNode(IClusterNode clusterNode, IOperation op,
+            CancellationTokenPair tokenPair)
+        {
+            var responseStatus = await clusterNode.SendAsync(op, tokenPair).ConfigureAwait(false);
+            if (responseStatus == ResponseStatus.BucketNotConnected)
+            {
+                await HandleBucketNotConnected(clusterNode)
+                    .ConfigureAwait(false);
+            }
+
+            return responseStatus;
+        }
+
+        private async Task HandleBucketNotConnected(IClusterNode oldNode)
+        {
+            Logger.LogWarning("HandleBucketNotConnected starting for node: {endPoint} for bucket {name}.", Redactor.SystemData(oldNode.EndPoint),
+                Redactor.UserData(Name));
+
+            //First Cleanup
+            lock (Nodes)
+            {
+                Nodes.Remove(oldNode.EndPoint, out var _);
+            }
+
+            var newNode = await Context.ReCreateNode(this, oldNode)
+                .ConfigureAwait(false);
+
+            var nodeRecreated = newNode is not null;
+            
+            if (nodeRecreated)
+            {
+                lock (Nodes)
+                {
+                    Nodes.Add(newNode!);
+                }
+            }
+
+            Logger.LogWarning("HandleBucketNotConnected ended for node: {endPoint} for bucket {name}. node recreated: {recreated}",
+                Redactor.SystemData(oldNode.EndPoint),
+                Redactor.UserData(Name), nodeRecreated);
+            
+            //for retry we will throw this exception
+            throw new NodeNotAvailableException($"Couchbase node return with status: BucketNotConnected, node recreated: {nodeRecreated}");
+        }
+        
+        #endregion
     }
 }
 
