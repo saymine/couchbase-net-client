@@ -2,12 +2,11 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(NetStandardTargets);$(NetSpecificTargets)</TargetFrameworks>
-    <VersionPrefix>$(CouchbaseNetClientReleasedVersion)</VersionPrefix>
-    <VersionSuffix>local-$([System.DateTime]::UtcNow.ToString('yyyyMMddHHmm'))</VersionSuffix>
+    <Version>3.4.2.1-mine</Version>
     <AssemblyName>Couchbase.NetClient</AssemblyName>
-    <PackageId>CouchbaseNetClient</PackageId>
-    <Product>CouchbaseNetClient</Product>
-    <Description>The Official Couchbase .NET SDK.</Description>
+    <PackageId>CouchbaseNetClient-Mine</PackageId>
+    <Product>CouchbaseNetClient-Mine</Product>
+    <Description>The Mine Couchbase .NET SDK.</Description>
 
     <PackageReleaseNotes>https://docs.couchbase.com/dotnet-sdk/current/project-docs/sdk-release-notes.html</PackageReleaseNotes>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

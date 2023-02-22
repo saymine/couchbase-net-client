@@ -2,10 +2,14 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(NetStandardTargets);$(NetSpecificTargets)</TargetFrameworks>
-    <VersionSuffix>local-$([System.DateTime]::UtcNow.ToString('yyyyMMddHHmm'))</VersionSuffix>
+    <Version>3.4.2.1-mine</Version>
     <RootNamespace>Couchbase.Extensions.DependencyInjection</RootNamespace>
-    <Description>Extensions for CouchbaseNetClient 3.x supporing .NET Core configuration and dependency injection.</Description>
+    <PackageId>Mine-Couchbase.Extensions.DependencyInjection</PackageId>
+    <Product>Mine-Couchbase.Extensions.DependencyInjection</Product>
+    <Description>Mine Extensions for CouchbaseNetClient 3.x supporing .NET Core configuration and dependency injection.</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Nullable>enable</Nullable>
+
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)'=='true'">
